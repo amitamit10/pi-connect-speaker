@@ -50,6 +50,6 @@ sudo scripts/uninstall.sh --purge   # removes everything
 
 ---
 
-> **Note:** This project was built with the assistance of [Claude Code](https://claude.ai/code) (Anthropic's AI coding assistant). Review the code before deploying to production.
+> **Built with AI:** The foundation was scaffolded by [OpenAI Codex](https://openai.com/blog/openai-codex), then the majority of the features, UI, bug fixes, and polish were built collaboratively with [Claude Code](https://claude.ai/code) (Anthropic). Review the code before deploying to production.
 
 Powered by [librespot](https://github.com/librespot-org/librespot) · MIT License
