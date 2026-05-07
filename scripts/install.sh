@@ -15,8 +15,9 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
+apt-get update
+
 apt_install() {
-  apt-get update
   DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
 }
 
