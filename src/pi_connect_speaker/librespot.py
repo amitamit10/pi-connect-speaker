@@ -69,7 +69,7 @@ def build_librespot_args(config: dict[str, Any], include_executable: bool = True
     else:
         args.append("--disable-audio-cache")
     if quality["autoplay_enabled"]:
-        args.append("--autoplay")
+        args.extend(["--autoplay", "on"])
     if not quality["gapless_enabled"]:
         args.append("--disable-gapless")
 
