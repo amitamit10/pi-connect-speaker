@@ -20,6 +20,8 @@ Then open **http://\<pi-ip\>:8080** in your browser.
 
 The device will appear in Spotify as **PiConnect Speaker**.
 
+> For custom install modes (existing binary, apt, Cargo) see [Install Options](docs/OPERATIONS.md#install-options).
+
 ## Verify
 
 ```bash
@@ -35,7 +37,11 @@ sudo scripts/uninstall.sh --purge   # removes everything
 
 ## Docs
 
-[Configuration](docs/CONFIGURATION.md) · [Operations](docs/OPERATIONS.md) · [API](docs/API.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Configuration & Paths & Security](docs/CONFIGURATION.md)
+- [Operations & Services & Logs](docs/OPERATIONS.md)
+- [API](docs/API.md)
+- [Architecture & Development](docs/ARCHITECTURE.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
 
 ---
 
