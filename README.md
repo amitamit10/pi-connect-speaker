@@ -18,7 +18,7 @@ Turn a Raspberry Pi into a Spotify Connect speaker with a web UI for settings.
 ## Install
 
 ```bash
-git clone https://github.com/<owner>/pi-connect-speaker.git && cd pi-connect-speaker && sudo scripts/install.sh
+sudo apt-get update && sudo apt-get install -y git && git clone https://github.com/amitamit10/pi-connect-speaker.git && cd pi-connect-speaker && sudo scripts/install.sh
 ```
 
 Then open **http://\<pi-ip\>:8080** in your browser.
