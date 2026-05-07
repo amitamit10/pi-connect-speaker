@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pi Connect Speaker</title>
+    <link rel="stylesheet" href="/assets/app.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Pi Connect Speaker</h1>
+        <p id="device-subtitle">Loading</p>
+      </div>
+      <div class="actions">
+        <button id="refresh-status" type="button">Refresh</button>
+        <button id="run-doctor" type="button">Doctor</button>
+        <button id="save-settings" type="button" class="primary">Save</button>
+        <button id="save-restart" type="button">Save & Restart</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <nav id="tabs" class="tabs" aria-label="Settings sections"></nav>
+      </aside>
+
+      <section class="content">
+        <div id="notice" class="notice" hidden></div>
+
+        <section id="status-panel" class="panel">
+          <div class="panel-head">
+            <h2>Dashboard</h2>
+            <div class="button-row">
+              <button data-service-target="spotify" data-service-action="start" type="button">Start</button>
+              <button data-service-target="spotify" data-service-action="stop" type="button">Stop</button>
+              <button data-service-target="spotify" data-service-action="restart" type="button">Restart</button>
+              <button data-service-target="spotify" data-service-action="enable-now" type="button">Enable</button>
+              <button data-service-target="spotify" data-service-action="disable-now" type="button">Disable</button>
+            </div>
+          </div>
+          <div id="status-grid" class="status-grid"></div>
+          <div id="system-grid" class="status-grid compact"></div>
+        </section>
+
+        <section id="doctor-panel" class="panel">
+          <div class="panel-head">
+            <h2>Doctor</h2>
+            <button id="refresh-doctor" type="button">Run</button>
+          </div>
+          <div id="doctor-summary" class="doctor-summary"></div>
+          <div id="doctor-list" class="check-list"></div>
+        </section>
+
+        <section id="settings-panel" class="panel">
+          <div class="panel-head">
+            <h2 id="section-title">Settings</h2>
+          </div>
+          <form id="settings-form" class="settings-form"></form>
+        </section>
+
+        <section id="audio-panel" class="panel">
+          <div class="panel-head">
+            <h2>Audio Devices</h2>
+            <div class="button-row">
+              <button id="refresh-audio" type="button">Refresh</button>
+              <button id="test-sound" type="button">Test Sound</button>
+            </div>
+          </div>
+          <div id="audio-devices" class="device-list"></div>
+          <div class="mixer">
+            <div>
+              <h3>Mixer</h3>
+              <p id="mixer-state" class="muted">Loading</p>
+            </div>
+            <div class="range-row">
+              <input id="mixer-volume" type="range" min="0" max="100" value="40">
+              <button id="set-volume" type="button">Set Volume</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="profiles-panel" class="panel">
+          <div class="panel-head">
+            <h2>Profiles</h2>
+          </div>
+          <div class="profile-tools">
+            <input id="profile-name" type="text" placeholder="profile-name" autocomplete="off">
+            <button id="save-profile" type="button">Save Profile</button>
+          </div>
+          <div id="profile-list" class="profile-list"></div>
+        </section>
+
+        <section id="backups-panel" class="panel">
+          <div class="panel-head">
+            <h2>Backups</h2>
+            <button id="refresh-backups" type="button">Refresh</button>
+          </div>
+          <div id="backup-list" class="profile-list"></div>
+        </section>
+
+        <section id="logs-panel" class="panel">
+          <div class="panel-head">
+            <h2>Logs</h2>
+            <div class="button-row">
+              <select id="log-target">
+                <option value="spotify">Spotify</option>
+                <option value="web">Web UI</option>
+              </select>
+              <button id="refresh-logs" type="button">Refresh</button>
+            </div>
+          </div>
+          <pre id="logs" class="logs"></pre>
+        </section>
+
+        <section id="preview-panel" class="panel">
+          <div class="panel-head">
+            <h2>Librespot Command</h2>
+            <button id="refresh-preview" type="button">Refresh</button>
+          </div>
+          <pre id="command-preview" class="logs"></pre>
+        </section>
+      </section>
+    </main>
+
+    <script src="/assets/app.js"></script>
+  </body>
+</html>

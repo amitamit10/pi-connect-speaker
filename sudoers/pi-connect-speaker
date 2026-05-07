@@ -1,0 +1,25 @@
+Defaults:pi-connect-speaker !requiretty
+
+Cmnd_Alias PCS_SYSTEMCTL = \
+  /bin/systemctl start pi-connect-speaker-librespot.service, \
+  /bin/systemctl stop pi-connect-speaker-librespot.service, \
+  /bin/systemctl restart pi-connect-speaker-librespot.service, \
+  /bin/systemctl enable pi-connect-speaker-librespot.service, \
+  /bin/systemctl enable --now pi-connect-speaker-librespot.service, \
+  /bin/systemctl disable pi-connect-speaker-librespot.service, \
+  /bin/systemctl disable --now pi-connect-speaker-librespot.service, \
+  /usr/bin/systemctl start pi-connect-speaker-librespot.service, \
+  /usr/bin/systemctl stop pi-connect-speaker-librespot.service, \
+  /usr/bin/systemctl restart pi-connect-speaker-librespot.service, \
+  /usr/bin/systemctl enable pi-connect-speaker-librespot.service, \
+  /usr/bin/systemctl enable --now pi-connect-speaker-librespot.service, \
+  /usr/bin/systemctl disable pi-connect-speaker-librespot.service, \
+  /usr/bin/systemctl disable --now pi-connect-speaker-librespot.service
+
+Cmnd_Alias PCS_JOURNALCTL = \
+  /bin/journalctl -u pi-connect-speaker-librespot.service *, \
+  /bin/journalctl -u pi-connect-speaker.service *, \
+  /usr/bin/journalctl -u pi-connect-speaker-librespot.service *, \
+  /usr/bin/journalctl -u pi-connect-speaker.service *
+
+pi-connect-speaker ALL=(root) NOPASSWD: PCS_SYSTEMCTL, PCS_JOURNALCTL

@@ -1,0 +1,27 @@
+[Unit]
+Description=Pi Connect Speaker Web UI
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=pi-connect-speaker
+Group=pi-connect-speaker
+SupplementaryGroups=audio
+Environment=PCS_CONFIG=/etc/pi-connect-speaker/config.toml
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/pi-connect-speaker/venv/bin/pi-connect-speaker
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=20
+UMask=0077
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+LockPersonality=true
+RestrictRealtime=true
+ReadWritePaths=/etc/pi-connect-speaker /var/cache/pi-connect-speaker /var/lib/pi-connect-speaker
+
+[Install]
+WantedBy=multi-user.target
