@@ -1,56 +1,88 @@
 # Pi Connect Speaker
 
-A small Raspberry Pi Spotify Connect receiver with a local settings UI.
+<p align="center">
+  <strong>A stable Raspberry Pi Spotify Connect speaker with a local settings UI.</strong>
+</p>
 
-The target setup is a Raspberry Pi connected to a receiver through a USB DAC. The app keeps `librespot` as the playback engine and adds a configurable web UI, systemd services, logs, audio-device selection, profiles, and a one-command installer.
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white">
+  <img alt="Raspberry Pi" src="https://img.shields.io/badge/Raspberry%20Pi-3B+-A22846?logo=raspberrypi&logoColor=white">
+  <img alt="Runtime" src="https://img.shields.io/badge/Runtime-no%20Node%20%2F%20no%20DB-168443">
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-black">
+</p>
 
-## Goals
+Pi Connect Speaker turns a Raspberry Pi into a Spotify Connect receiver for a USB DAC and receiver setup. It uses `librespot` for playback and adds a clean web UI for settings, audio output, logs, diagnostics, profiles, and config backups.
 
-- Stable Spotify Connect playback on Raspberry Pi OS.
-- USB DAC first, with ALSA controls exposed in the UI.
-- No Node, no frontend build step, and no database.
-- All runtime behavior is configurable through `/etc/pi-connect-speaker/config.toml` and the web UI.
-- No web password by default for trusted home networks.
-- Built-in doctor checks, config backups, command preview, ALSA mixer controls, and profile management.
+## Highlights
 
-## Hardware Target
+| Area | What you get |
+| --- | --- |
+| Stability | `systemd` services, auto-restart, health checks, doctor command |
+| Audio | USB DAC selection, ALSA mixer control, test sound, command preview |
+| Settings | Every runtime option is editable in the UI and saved to TOML |
+| Recovery | Config backups, profile save/load, logs from the web UI |
+| Lightweight | Python stdlib backend, static HTML/CSS/JS, no database |
 
-- Raspberry Pi 3B or newer.
-- Raspberry Pi OS Lite or Debian-based OS with systemd.
-- USB DAC connected to a receiver.
-- Wi-Fi or Ethernet.
+## Target Setup
 
-## Installation
+- Raspberry Pi 3B or newer
+- Raspberry Pi OS Lite or another Debian/systemd image
+- USB DAC connected to a receiver
+- Wi-Fi or Ethernet
 
-Run this on the Raspberry Pi, not on your development machine:
+## Install
+
+Run this on the Raspberry Pi:
 
 ```bash
-git clone https://github.com/<your-github-user>/pi-connect-speaker.git
+git clone https://github.com/<owner>/pi-connect-speaker.git
 cd pi-connect-speaker
-sudo scripts/install.sh
-sudo systemctl start pi-connect-speaker.service
-sudo systemctl start pi-connect-speaker-librespot.service
+sudo START_NOW=1 scripts/install.sh
 ```
 
-Open:
+Open the UI:
 
 ```text
 http://<raspberry-pi-ip>:8080
 ```
 
-The default Spotify Connect device name is:
+Default Spotify Connect device name:
 
 ```text
 PiConnect Speaker
 ```
 
-Install and start immediately:
+## Verify
 
 ```bash
-sudo START_NOW=1 scripts/install.sh
+sudo -u pi-connect-speaker /opt/pi-connect-speaker/venv/bin/pi-connect-speaker-doctor
 ```
 
-Run the installer in specific `librespot` modes:
+Useful service commands:
+
+```bash
+sudo systemctl status pi-connect-speaker.service
+sudo systemctl status pi-connect-speaker-librespot.service
+sudo systemctl restart pi-connect-speaker-librespot.service
+```
+
+## Uninstall
+
+Remove services and app files, keeping config/cache:
+
+```bash
+sudo scripts/uninstall.sh
+```
+
+Remove everything, including config, cache, data, and service user:
+
+```bash
+sudo scripts/uninstall.sh --purge
+```
+
+## Installer Options
+
+`scripts/install.sh` uses an existing `librespot` binary when available. Otherwise it tries the OS package, then falls back to building with Cargo.
 
 ```bash
 sudo LIBRESPOT_INSTALL_MODE=existing scripts/install.sh
@@ -58,77 +90,20 @@ sudo LIBRESPOT_INSTALL_MODE=apt scripts/install.sh
 sudo LIBRESPOT_INSTALL_MODE=auto scripts/install.sh
 ```
 
-`existing` requires `librespot` to already be installed. `apt` uses only the OS package. `auto` first uses an existing binary, then tries the OS package, then falls back to `cargo install`.
+## Paths
 
-Verify the installation:
+| Path | Purpose |
+| --- | --- |
+| `/etc/pi-connect-speaker/config.toml` | Active configuration |
+| `/etc/pi-connect-speaker/profiles` | Saved profiles |
+| `/etc/pi-connect-speaker/backups` | Automatic config backups |
+| `/var/cache/pi-connect-speaker` | Librespot audio/system cache |
 
-```bash
-sudo -u pi-connect-speaker /opt/pi-connect-speaker/venv/bin/pi-connect-speaker-doctor
-```
+## Security
 
-## What Gets Installed
-
-- `pi-connect-speaker.service`: local web UI and JSON API.
-- `pi-connect-speaker-librespot.service`: Spotify Connect engine wrapper.
-- `/etc/pi-connect-speaker/config.toml`: active settings.
-- `/etc/pi-connect-speaker/profiles`: saved setting profiles.
-- `/etc/pi-connect-speaker/backups`: automatic config backups.
-- `/var/cache/pi-connect-speaker`: librespot audio and credential caches.
-- Limited sudo rules so the web UI can restart only the Spotify engine service.
-
-`scripts/install.sh` uses an existing `librespot` binary when one is already installed. Otherwise it tries the OS package and then falls back to `cargo install librespot` with ALSA and mDNS support. On a Pi 3B, the cargo fallback can take a while.
-
-## Web UI
-
-The UI exposes:
-
-- Device name and Spotify device type.
-- Web bind address, port, theme, and auth mode.
-- Audio backend, ALSA device, mixer, output format, and dither.
-- Startup volume, volume curve, ReplayGain normalisation, and range.
-- Bitrate, cache paths, gapless playback, and autoplay.
-- Network recovery and stability settings.
-- Service actions: start, stop, restart.
-- Audio device discovery and test sound.
-- Logs, command preview, and profiles.
-- Doctor checks for systemd, ALSA, network, paths, binaries, and generated librespot command.
-- Config backups with restore from the UI.
-
-## Configuration
-
-Main config:
-
-```text
-/etc/pi-connect-speaker/config.toml
-```
-
-Default config template:
-
-```text
-config/default_config.toml
-```
-
-The web API validates every setting before writing the TOML file. Unknown keys are rejected so mistakes do not silently change runtime behavior.
-
-See [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
-
-## Librespot
-
-`librespot` is the Spotify Connect engine. This project builds a command from `config.toml` and runs it under systemd.
-
-Useful upstream references:
-
-- https://github.com/librespot-org/librespot
-- https://github.com/librespot-org/librespot/wiki/Options
-- https://github.com/librespot-org/librespot/wiki/Audio-Backends
-
-## Security Note
-
-The default web UI auth mode is `none`. This matches a trusted home LAN setup. Do not expose port `8080` to the internet. Change `web.host` to `127.0.0.1` or set `web.auth_mode = "pin"` before using it on an untrusted network.
+The web UI defaults to `auth_mode = "none"` for trusted home networks. Do not expose port `8080` to the internet. For stricter use, change `web.host` to `127.0.0.1` or set `web.auth_mode = "pin"`.
 
 ## Development
-
-This project uses only the Python standard library at runtime.
 
 ```bash
 python3 -m venv .venv
@@ -138,40 +113,25 @@ python -m unittest discover -s tests
 python -m compileall src
 ```
 
-Run the doctor without starting the web server:
-
-```bash
-PCS_CONFIG=config/default_config.toml PYTHONPATH=src python -m pi_connect_speaker.cli doctor
-```
-
-Local development can use a temporary config:
+Run locally with a temporary config:
 
 ```bash
 PCS_CONFIG=/tmp/pi-connect-speaker.toml python -m pi_connect_speaker
 ```
 
-Do not run systemd install commands on your development machine unless it is the target Pi.
+Do not run `scripts/install.sh` on your development machine unless it is the target Raspberry Pi.
 
-## Uninstall
+## Docs
 
-```bash
-sudo scripts/uninstall.sh
-```
+- [Configuration](docs/CONFIGURATION.md)
+- [Operations](docs/OPERATIONS.md)
+- [API](docs/API.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
 
-This stops and removes the two systemd service files and removes `/opt/pi-connect-speaker`. It keeps config, profiles, backups, cache, and the service user.
+## Credits
 
-Remove config, cache, data, and service user too:
-
-```bash
-sudo scripts/uninstall.sh --purge
-```
-
-After uninstalling, these commands should no longer find active services:
-
-```bash
-systemctl status pi-connect-speaker.service
-systemctl status pi-connect-speaker-librespot.service
-```
+Playback is powered by [`librespot`](https://github.com/librespot-org/librespot).
 
 ## License
 
