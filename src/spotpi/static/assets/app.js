@@ -254,20 +254,31 @@ function formatUptime(uptimeStr) {
   return `${m}m`;
 }
 
+function setView(view) {
+  document.body.dataset.view = view;
+  document.querySelector("#btn-dashboard").classList.toggle("active", view === "dashboard");
+  document.querySelector("#btn-advanced").classList.toggle("active", view === "advanced");
+}
+
 function renderStatusHero(status) {
-  const hero = document.querySelector("#status-hero");
-  if (!hero) return;
   const isOk = status.spotify.active_ok;
-  hero.innerHTML = `
-    <div class="hero-state">
-      <div class="hero-dot ${isOk ? "hero-dot--on" : "hero-dot--off"}"></div>
-      <span>${isOk ? "Spotify Connect Active" : "Spotify Connect Inactive"}</span>
-    </div>
-    <div class="hero-name">${escapeHtml(status.device_name)}</div>
-    <div class="hero-hint">${isOk
-      ? "Open Spotify → tap the speaker icon → select this device to play"
-      : "Service is not running — tap Start or Enable below"}</div>
-  `;
+
+  const brandDot = document.querySelector("#brand-dot");
+  if (brandDot) brandDot.classList.toggle("live", isOk);
+
+  const heroDot = document.querySelector("#hero-dot");
+  const heroLabel = document.querySelector("#hero-label");
+  const heroName = document.querySelector("#hero-name");
+  const heroHint = document.querySelector("#hero-hint");
+
+  if (heroDot) {
+    heroDot.className = `hero-dot ${isOk ? "hero-dot--on" : "hero-dot--off"}`;
+  }
+  if (heroLabel) heroLabel.textContent = isOk ? "Spotify Connect · Active" : "Spotify Connect · Inactive";
+  if (heroName) heroName.textContent = status.device_name;
+  if (heroHint) heroHint.textContent = isOk
+    ? "Open Spotify → tap the speaker icon → select this device"
+    : "Service is not running — tap Start or Enable below";
 }
 
 async function refreshStatus() {
@@ -528,7 +539,7 @@ function openSetupWizard() {
   wizard.data.audioDevice = state.config.audio.device_selection === "manual" ? state.config.audio.device : null;
   wizard.step = 0;
   wizard.devices = [];
-  document.querySelector("#setup-wizard").hidden = false;
+  document.querySelector("#setup-wizard").classList.add("is-open");
   document.body.style.overflow = "hidden";
   renderWizardStep();
   api("/api/audio/devices").then(payload => {
@@ -538,7 +549,7 @@ function openSetupWizard() {
 }
 
 function closeSetupWizard() {
-  document.querySelector("#setup-wizard").hidden = true;
+  document.querySelector("#setup-wizard").classList.remove("is-open");
   document.body.style.overflow = "";
 }
 
@@ -555,7 +566,7 @@ function renderWizardStep() {
     progress.append(dot);
   }
 
-  prevBtn.hidden = wizard.step === 0;
+  prevBtn.className = `wizard-prev-btn${wizard.step > 0 ? " visible" : ""}`;
   nextBtn.textContent = wizard.step === wizard.totalSteps - 1 ? "Save & Restart" : "Next →";
   content.innerHTML = "";
   [wizardStep0, wizardStep1, wizardStep2, wizardStep3][wizard.step](content);
@@ -563,7 +574,7 @@ function renderWizardStep() {
 
 function wizardStep0(el) {
   el.innerHTML = `
-    <div class="wizard-step-icon">🎵</div>
+    <div class="wizard-step-icon">&#127925;</div>
     <h2 class="wizard-step-title">Device Name</h2>
     <p class="wizard-step-desc">What should your speaker be called in the Spotify app?</p>
     <div class="wizard-field">
@@ -581,7 +592,7 @@ function wizardStep0(el) {
 function wizardStep1(el) {
   const header = document.createElement("div");
   header.innerHTML = `
-    <div class="wizard-step-icon">🔊</div>
+    <div class="wizard-step-icon">&#128266;</div>
     <h2 class="wizard-step-title">Audio Output</h2>
     <p class="wizard-step-desc">Which device should Spotify play audio through?</p>
   `;
@@ -632,7 +643,7 @@ function wizardStep2(el) {
 
   const header = document.createElement("div");
   header.innerHTML = `
-    <div class="wizard-step-icon">🎚️</div>
+    <div class="wizard-step-icon">&#127962;&#65039;</div>
     <h2 class="wizard-step-title">Audio Quality</h2>
     <p class="wizard-step-desc">Choose streaming bitrate and volume behaviour.</p>
     <div class="wizard-field"><label>Bitrate</label></div>
@@ -680,7 +691,7 @@ function wizardStep3(el) {
     : "Auto (default)";
 
   el.innerHTML = `
-    <div class="wizard-step-icon">✅</div>
+    <div class="wizard-step-icon">&#9989;</div>
     <h2 class="wizard-step-title">All Set!</h2>
     <p class="wizard-step-desc">Review your settings and tap Save & Restart to apply.</p>
     <div class="wizard-summary">
@@ -731,6 +742,9 @@ async function wizardFinish() {
     setBusy(nextBtn, false);
   }
 }
+
+document.querySelector("#btn-dashboard").addEventListener("click", () => setView("dashboard"));
+document.querySelector("#btn-advanced").addEventListener("click", () => setView("advanced"));
 
 document.querySelector("#enter-setup").addEventListener("click", openSetupWizard);
 document.querySelector("#wizard-close").addEventListener("click", closeSetupWizard);
