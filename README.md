@@ -52,4 +52,6 @@ sudo scripts/uninstall.sh --purge   # removes everything
 
 ---
 
+> **Note:** This project was built with the assistance of [Claude Code](https://claude.ai/code) (Anthropic's AI coding assistant). Review the code before deploying to production.
+
 Powered by [librespot](https://github.com/librespot-org/librespot) · MIT License

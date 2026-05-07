@@ -15,8 +15,9 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
+apt-get update
+
 apt_install() {
-  apt-get update
   DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
 }
 
@@ -71,7 +72,6 @@ install_app() {
   chown -R "${APP_USER}:${APP_USER}" "${CONFIG_DIR}" "${CACHE_DIR}" "${DATA_DIR}"
 
   python3 -m venv "${INSTALL_DIR}/venv"
-  "${INSTALL_DIR}/venv/bin/python" -m pip install --upgrade pip
   "${INSTALL_DIR}/venv/bin/python" -m pip install "${REPO_DIR}"
 
   if [[ ! -f "${CONFIG_DIR}/config.toml" ]]; then
