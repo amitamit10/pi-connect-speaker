@@ -6,18 +6,23 @@
     <title>SpotPi</title>
     <link rel="stylesheet" href="/assets/app.css">
   </head>
-  <body>
+  <body data-view="dashboard">
+
     <header class="topbar">
-      <div>
-        <h1>SpotPi</h1>
-        <p id="device-subtitle">Loading…</p>
+      <div class="topbar-brand">
+        <div class="brand-dot" id="brand-dot"></div>
+        <span class="brand-name">SpotPi</span>
       </div>
+      <nav class="view-tabs">
+        <button id="btn-dashboard" class="view-tab active" type="button">Dashboard</button>
+        <button id="btn-advanced" class="view-tab" type="button">Advanced</button>
+      </nav>
       <div class="actions">
-        <button id="enter-setup" type="button">Setup</button>
+        <button id="enter-setup" type="button" class="setup-btn">&#9881; Enter Setup</button>
         <button id="refresh-status" type="button">Refresh</button>
         <button id="run-doctor" type="button">Doctor</button>
-        <button id="save-settings" type="button" class="primary">Save</button>
-        <button id="save-restart" type="button">Save &amp; Restart</button>
+        <button id="save-settings" type="button">Save</button>
+        <button id="save-restart" type="button" class="primary">Save &amp; Restart</button>
       </div>
     </header>
 
@@ -29,11 +34,16 @@
       <section class="content">
         <div id="notice" class="notice" hidden></div>
 
-        <section id="status-panel" class="panel">
-          <div id="status-hero" class="status-hero"></div>
-          <div class="panel-head">
-            <h2>Dashboard</h2>
-            <div class="button-row">
+        <!-- ── Dashboard ── -->
+        <section id="status-panel" class="panel dashboard-panel">
+          <div id="status-hero" class="status-hero">
+            <div class="hero-state">
+              <div class="hero-dot hero-dot--off" id="hero-dot"></div>
+              <span id="hero-label">Loading&#8230;</span>
+            </div>
+            <div class="hero-name" id="hero-name">SpotPi</div>
+            <div class="hero-hint" id="hero-hint"></div>
+            <div class="hero-actions">
               <button data-service-target="spotify" data-service-action="start" type="button">Start</button>
               <button data-service-target="spotify" data-service-action="stop" type="button">Stop</button>
               <button data-service-target="spotify" data-service-action="restart" type="button">Restart</button>
@@ -41,11 +51,14 @@
               <button data-service-target="spotify" data-service-action="disable-now" type="button">Disable</button>
             </div>
           </div>
-          <div id="status-grid" class="status-grid"></div>
-          <div id="system-grid" class="status-grid compact"></div>
+          <div class="dashboard-stats">
+            <div id="status-grid" class="status-grid"></div>
+            <div id="system-grid" class="status-grid compact"></div>
+          </div>
         </section>
 
-        <section id="doctor-panel" class="panel">
+        <!-- ── Advanced ── -->
+        <section id="doctor-panel" class="panel adv-panel">
           <div class="panel-head">
             <h2>Doctor</h2>
             <button id="refresh-doctor" type="button">Run</button>
@@ -54,14 +67,14 @@
           <div id="doctor-list" class="check-list"></div>
         </section>
 
-        <section id="settings-panel" class="panel">
+        <section id="settings-panel" class="panel adv-panel">
           <div class="panel-head">
             <h2 id="section-title">Settings</h2>
           </div>
           <form id="settings-form" class="settings-form"></form>
         </section>
 
-        <section id="audio-panel" class="panel">
+        <section id="audio-panel" class="panel adv-panel">
           <div class="panel-head">
             <h2>Audio Devices</h2>
             <div class="button-row">
@@ -82,10 +95,8 @@
           </div>
         </section>
 
-        <section id="profiles-panel" class="panel">
-          <div class="panel-head">
-            <h2>Profiles</h2>
-          </div>
+        <section id="profiles-panel" class="panel adv-panel">
+          <div class="panel-head"><h2>Profiles</h2></div>
           <div class="profile-tools">
             <input id="profile-name" type="text" placeholder="profile-name" autocomplete="off">
             <button id="save-profile" type="button">Save Profile</button>
@@ -93,7 +104,7 @@
           <div id="profile-list" class="profile-list"></div>
         </section>
 
-        <section id="backups-panel" class="panel">
+        <section id="backups-panel" class="panel adv-panel">
           <div class="panel-head">
             <h2>Backups</h2>
             <button id="refresh-backups" type="button">Refresh</button>
@@ -101,7 +112,7 @@
           <div id="backup-list" class="profile-list"></div>
         </section>
 
-        <section id="logs-panel" class="panel">
+        <section id="logs-panel" class="panel adv-panel">
           <div class="panel-head">
             <h2>Logs</h2>
             <div class="button-row">
@@ -115,7 +126,7 @@
           <pre id="logs" class="logs"></pre>
         </section>
 
-        <section id="preview-panel" class="panel">
+        <section id="preview-panel" class="panel adv-panel">
           <div class="panel-head">
             <h2>Librespot Command</h2>
             <button id="refresh-preview" type="button">Refresh</button>
@@ -125,17 +136,17 @@
       </section>
     </main>
 
-    <!-- Setup Wizard -->
-    <div id="setup-wizard" class="wizard-overlay" hidden>
-      <div class="wizard-card" role="dialog" aria-modal="true" aria-labelledby="wizard-title">
+    <!-- Setup Wizard (class-controlled, not hidden attribute) -->
+    <div id="setup-wizard" class="wizard-overlay">
+      <div class="wizard-card" role="dialog" aria-modal="true">
         <div class="wizard-header">
           <div id="wizard-progress" class="wizard-progress"></div>
-          <button id="wizard-close" type="button" class="wizard-close" aria-label="Close">✕</button>
+          <button id="wizard-close" type="button" class="wizard-close" aria-label="Close">&#10005;</button>
         </div>
         <div id="wizard-content" class="wizard-content"></div>
         <div class="wizard-footer">
-          <button id="wizard-prev" type="button" hidden>← Back</button>
-          <button id="wizard-next" type="button" class="primary">Next →</button>
+          <button id="wizard-prev" type="button" class="wizard-prev-btn">&#8592; Back</button>
+          <button id="wizard-next" type="button" class="primary">Next &#8594;</button>
         </div>
       </div>
     </div>
