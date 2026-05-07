@@ -15,9 +15,8 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
-apt-get update
-
 apt_install() {
+  apt-get update
   DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
 }
 
@@ -89,7 +88,7 @@ install_app() {
   systemctl enable "${APP_NAME}.service"
   systemctl enable "${APP_NAME}-librespot.service"
 
-  if [[ "${START_NOW:-0}" == "1" ]]; then
+  if [[ "${START_NOW:-1}" == "1" ]]; then
     systemctl start "${APP_NAME}.service"
     systemctl start "${APP_NAME}-librespot.service"
   fi
@@ -100,13 +99,6 @@ install_app
 
 cat <<EOF
 Installed ${APP_NAME}.
-
-Start now:
-  sudo systemctl start ${APP_NAME}.service
-  sudo systemctl start ${APP_NAME}-librespot.service
-
-Or install and start in one command:
-  sudo START_NOW=1 scripts/install.sh
 
 Check the installation:
   sudo -u ${APP_USER} ${INSTALL_DIR}/venv/bin/pi-connect-speaker-doctor
