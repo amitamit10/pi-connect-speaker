@@ -246,11 +246,38 @@ function applyVisibility() {
   if (preview) preview.hidden = !state.config.diagnostics.show_command_preview;
 }
 
+function formatUptime(uptimeStr) {
+  const secs = parseFloat((uptimeStr || "0").split(" ")[0]);
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function renderStatusHero(status) {
+  const hero = document.querySelector("#status-hero");
+  if (!hero) return;
+  const isOk = status.spotify.active_ok;
+  hero.innerHTML = `
+    <div class="hero-state">
+      <div class="hero-dot ${isOk ? "hero-dot--on" : "hero-dot--off"}"></div>
+      <span>${isOk ? "Spotify Connect Active" : "Spotify Connect Inactive"}</span>
+    </div>
+    <div class="hero-name">${escapeHtml(status.device_name)}</div>
+    <div class="hero-hint">${isOk
+      ? "Open Spotify → tap the speaker icon → select this device to play"
+      : "Service is not running — tap Start or Enable below"}</div>
+  `;
+}
+
 async function refreshStatus() {
-  const status = await api("/api/status");
+  const [status, system] = await Promise.all([api("/api/status"), api("/api/system")]);
+
+  renderStatusHero(status);
+
   const items = [
     ["Spotify", status.spotify.active, status.spotify.active_ok ? "ok" : "warn"],
-    ["Spotify autostart", status.spotify.enabled, status.spotify.enabled_ok ? "ok" : "warn"],
+    ["Autostart", status.spotify.enabled, status.spotify.enabled_ok ? "ok" : "warn"],
     ["Web UI", status.web.active, status.web.active_ok ? "ok" : "warn"],
     ["Device", status.device_name, "ok"],
   ];
@@ -262,12 +289,12 @@ async function refreshStatus() {
     els.statusGrid.append(item);
   }
 
-  const system = await api("/api/system");
   els.systemGrid.innerHTML = "";
   const systemItems = [
     ["Hostname", system.hostname || "unknown"],
-    ["IP", (system.ip_addresses || []).join(", ") || "unknown"],
-    ["CPU temp", system.cpu_temperature_c === null ? "unknown" : `${system.cpu_temperature_c} C`],
+    ["IP", (system.ip_addresses || []).filter(ip => !ip.includes(":")).join(", ") || "unknown"],
+    ["CPU temp", system.cpu_temperature_c === null ? "—" : `${system.cpu_temperature_c} °C`],
+    ["Uptime", formatUptime(system.uptime)],
   ];
   for (const [label, value] of systemItems) {
     const item = document.createElement("div");
@@ -483,6 +510,242 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
+// ── Setup Wizard ─────────────────────────────────────────
+
+const wizard = {
+  step: 0,
+  totalSteps: 4,
+  data: { deviceName: "", audioDevice: null, bitrate: 320, normalisation: true },
+  devices: [],
+};
+
+function openSetupWizard() {
+  if (!state.config) return;
+  wizard.data.deviceName = state.config.device.name;
+  wizard.data.bitrate = state.config.quality.bitrate_kbps;
+  wizard.data.normalisation = state.config.volume.normalisation_enabled;
+  wizard.data.audioDevice = state.config.audio.device_selection === "manual" ? state.config.audio.device : null;
+  wizard.step = 0;
+  wizard.devices = [];
+  document.querySelector("#setup-wizard").hidden = false;
+  document.body.style.overflow = "hidden";
+  renderWizardStep();
+  api("/api/audio/devices").then(payload => {
+    wizard.devices = payload.hardware || [];
+    if (wizard.step === 1) renderWizardStep();
+  }).catch(() => {});
+}
+
+function closeSetupWizard() {
+  document.querySelector("#setup-wizard").hidden = true;
+  document.body.style.overflow = "";
+}
+
+function renderWizardStep() {
+  const progress = document.querySelector("#wizard-progress");
+  const content = document.querySelector("#wizard-content");
+  const prevBtn = document.querySelector("#wizard-prev");
+  const nextBtn = document.querySelector("#wizard-next");
+
+  progress.innerHTML = "";
+  for (let i = 0; i < wizard.totalSteps; i++) {
+    const dot = document.createElement("div");
+    dot.className = `wizard-dot${i === wizard.step ? " active" : i < wizard.step ? " done" : ""}`;
+    progress.append(dot);
+  }
+
+  prevBtn.hidden = wizard.step === 0;
+  nextBtn.textContent = wizard.step === wizard.totalSteps - 1 ? "Save & Restart" : "Next →";
+  content.innerHTML = "";
+  [wizardStep0, wizardStep1, wizardStep2, wizardStep3][wizard.step](content);
+}
+
+function wizardStep0(el) {
+  el.innerHTML = `
+    <div class="wizard-step-icon">🎵</div>
+    <h2 class="wizard-step-title">Device Name</h2>
+    <p class="wizard-step-desc">What should your speaker be called in the Spotify app?</p>
+    <div class="wizard-field">
+      <label for="wiz-name">Speaker name</label>
+      <input id="wiz-name" type="text" value="${escapeHtml(wizard.data.deviceName)}" placeholder="PiConnect Speaker" autocomplete="off">
+    </div>
+    <div class="wizard-tip">
+      <strong>Tip:</strong> This is the name that appears in Spotify when choosing where to play.
+      Keep it short and recognisable.
+    </div>
+  `;
+  el.querySelector("#wiz-name").addEventListener("input", e => { wizard.data.deviceName = e.target.value; });
+}
+
+function wizardStep1(el) {
+  const header = document.createElement("div");
+  header.innerHTML = `
+    <div class="wizard-step-icon">🔊</div>
+    <h2 class="wizard-step-title">Audio Output</h2>
+    <p class="wizard-step-desc">Which device should Spotify play audio through?</p>
+  `;
+  el.append(header);
+
+  const list = document.createElement("div");
+  list.className = "wizard-device-list";
+
+  if (!wizard.devices.length) {
+    list.innerHTML = `<div class="muted" style="padding:12px">Loading devices…</div>`;
+  } else {
+    for (const device of wizard.devices) {
+      const isUSB = /usb/i.test(device.card_name) || device.id === "hw:1,0";
+      const isSelected = wizard.data.audioDevice === device.id;
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = `wizard-device-item${isSelected ? " selected" : ""}`;
+      item.innerHTML = `
+        <div class="device-check"></div>
+        <div>
+          <div class="wizard-device-name">${escapeHtml(device.card_name)} / ${escapeHtml(device.device_name)}</div>
+          <div class="wizard-device-id">${escapeHtml(device.id)}</div>
+        </div>
+        ${isUSB ? '<span class="wizard-recommended">Recommended</span>' : ""}
+      `;
+      item.addEventListener("click", () => {
+        wizard.data.audioDevice = device.id;
+        list.querySelectorAll(".wizard-device-item").forEach(b => b.classList.remove("selected"));
+        item.classList.add("selected");
+      });
+      list.append(item);
+    }
+  }
+  el.append(list);
+
+  const tip = document.createElement("div");
+  tip.className = "wizard-tip";
+  tip.innerHTML = "<strong>Tip:</strong> For a USB DAC or USB audio interface, select the <code>hw:X,Y</code> device. Use <em>Test Sound</em> in the Audio tab to verify your selection.";
+  el.append(tip);
+}
+
+function wizardStep2(el) {
+  const bitrateOptions = [
+    { value: 96,  label: "96 kbps",  desc: "Low bandwidth" },
+    { value: 160, label: "160 kbps", desc: "Standard" },
+    { value: 320, label: "320 kbps", desc: "Best quality" },
+  ];
+
+  const header = document.createElement("div");
+  header.innerHTML = `
+    <div class="wizard-step-icon">🎚️</div>
+    <h2 class="wizard-step-title">Audio Quality</h2>
+    <p class="wizard-step-desc">Choose streaming bitrate and volume behaviour.</p>
+    <div class="wizard-field"><label>Bitrate</label></div>
+  `;
+  el.append(header);
+
+  const grid = document.createElement("div");
+  grid.className = "wizard-quality-grid";
+  for (const opt of bitrateOptions) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `quality-option${wizard.data.bitrate === opt.value ? " selected" : ""}`;
+    btn.innerHTML = `<span class="quality-label">${opt.label}</span><span class="quality-desc">${opt.desc}</span>`;
+    btn.addEventListener("click", () => {
+      wizard.data.bitrate = opt.value;
+      grid.querySelectorAll(".quality-option").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+    });
+    grid.append(btn);
+  }
+  el.append(grid);
+
+  const normRow = document.createElement("label");
+  normRow.className = "wizard-toggle-row";
+  normRow.style.cursor = "pointer";
+  normRow.innerHTML = `
+    <input type="checkbox" ${wizard.data.normalisation ? "checked" : ""}>
+    <div class="wizard-toggle-label">
+      Volume normalisation
+      <small>Keeps all tracks at consistent volume — recommended</small>
+    </div>
+  `;
+  normRow.querySelector("input").addEventListener("change", e => { wizard.data.normalisation = e.target.checked; });
+  el.append(normRow);
+
+  const tip = document.createElement("div");
+  tip.className = "wizard-tip";
+  tip.innerHTML = "<strong>Recommended:</strong> 320 kbps for best audio quality. Enable normalisation to avoid sudden volume jumps between songs.";
+  el.append(tip);
+}
+
+function wizardStep3(el) {
+  const deviceLabel = wizard.data.audioDevice
+    ? (wizard.devices.find(d => d.id === wizard.data.audioDevice)?.card_name || wizard.data.audioDevice)
+    : "Auto (default)";
+
+  el.innerHTML = `
+    <div class="wizard-step-icon">✅</div>
+    <h2 class="wizard-step-title">All Set!</h2>
+    <p class="wizard-step-desc">Review your settings and tap Save & Restart to apply.</p>
+    <div class="wizard-summary">
+      <div class="wizard-summary-row">
+        <span class="wizard-summary-label">Device Name</span>
+        <span class="wizard-summary-value">${escapeHtml(wizard.data.deviceName || "PiConnect Speaker")}</span>
+      </div>
+      <div class="wizard-summary-row">
+        <span class="wizard-summary-label">Audio Output</span>
+        <span class="wizard-summary-value">${escapeHtml(deviceLabel)}</span>
+      </div>
+      <div class="wizard-summary-row">
+        <span class="wizard-summary-label">Bitrate</span>
+        <span class="wizard-summary-value">${wizard.data.bitrate} kbps</span>
+      </div>
+      <div class="wizard-summary-row">
+        <span class="wizard-summary-label">Normalisation</span>
+        <span class="wizard-summary-value">${wizard.data.normalisation ? "Enabled" : "Disabled"}</span>
+      </div>
+    </div>
+    <div class="wizard-tip" style="margin-top:16px">
+      <strong>After saving:</strong> Open Spotify, tap the speaker icon, and select
+      <strong>${escapeHtml(wizard.data.deviceName || "PiConnect Speaker")}</strong> to start playing.
+    </div>
+  `;
+}
+
+async function wizardFinish() {
+  state.config.device.name = wizard.data.deviceName || state.config.device.name;
+  state.config.quality.bitrate_kbps = wizard.data.bitrate;
+  state.config.volume.normalisation_enabled = wizard.data.normalisation;
+  if (wizard.data.audioDevice) {
+    state.config.audio.device_selection = "manual";
+    state.config.audio.device = wizard.data.audioDevice;
+    state.config.audio.alsa_mixer_device = wizard.data.audioDevice.startsWith("hw:")
+      ? wizard.data.audioDevice.replace(/,\d+$/, "")
+      : wizard.data.audioDevice;
+  }
+  const nextBtn = document.querySelector("#wizard-next");
+  setBusy(nextBtn, true);
+  try {
+    await saveSettings({ restart: true });
+    closeSetupWizard();
+    showNotice("Setup complete — Spotify Connect restarted");
+  } catch (error) {
+    showNotice(error.message, true);
+  } finally {
+    setBusy(nextBtn, false);
+  }
+}
+
+document.querySelector("#enter-setup").addEventListener("click", openSetupWizard);
+document.querySelector("#wizard-close").addEventListener("click", closeSetupWizard);
+document.querySelector("#setup-wizard").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeSetupWizard();
+});
+document.querySelector("#wizard-prev").addEventListener("click", () => {
+  if (wizard.step > 0) { wizard.step--; renderWizardStep(); }
+});
+document.querySelector("#wizard-next").addEventListener("click", async () => {
+  if (wizard.step < wizard.totalSteps - 1) { wizard.step++; renderWizardStep(); }
+  else await wizardFinish();
+});
+
+// ─────────────────────────────────────────────────────────
 
 document.querySelector("#save-settings").addEventListener("click", async (event) => {
   setBusy(event.currentTarget, true);
