@@ -159,17 +159,21 @@ class RequestHandler(BaseHTTPRequestHandler):
         raise ApiError(HTTPStatus.NOT_FOUND, "Not found")
 
     def _run_update(self) -> dict[str, Any]:
-        # Find git repo
+        # Find git repo using `find` (avoids permission issues with glob on /home/*)
+        find_result = subprocess.run(
+            ["find", "/home", "/root", "/opt", "-maxdepth", "4", "-name", ".git", "-type", "d"],
+            text=True, capture_output=True, timeout=15,
+        )
         repo: Path | None = None
-        candidates = ["/opt/pi-connect-speaker", "/opt/spotpi"]
-        candidates += glob.glob("/home/*/pi-connect-speaker")
-        candidates += glob.glob("/home/*/spotpi")
-        for p in candidates:
-            if Path(p, ".git").is_dir():
-                repo = Path(p)
+        for git_dir in find_result.stdout.splitlines():
+            candidate = Path(git_dir).parent
+            if candidate.name in ("pi-connect-speaker", "spotpi"):
+                repo = candidate
                 break
+
         if repo is None:
-            raise ApiError(HTTPStatus.INTERNAL_SERVER_ERROR, "Git repository not found")
+            raise ApiError(HTTPStatus.INTERNAL_SERVER_ERROR,
+                           "Git repository not found. Clone the repo to your home directory first.")
 
         result = subprocess.run(
             ["git", "-C", str(repo), "pull", "origin", "main"],
