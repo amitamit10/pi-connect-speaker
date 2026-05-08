@@ -559,12 +559,31 @@ async function testSound() {
   showNotice(payload.ok ? "Test sound started" : payload.stderr || "Test sound failed", !payload.ok);
 }
 
+async function runUpdate() {
+  showNotice("Pulling from GitHub…");
+  const btn = document.querySelector("#run-update");
+  setBusy(btn, true);
+  try {
+    const payload = await api("/api/update", { method: "POST", body: "{}" });
+    showNotice(payload.restarting ? "Updated! Restarting in 2 seconds…" : "Up to date");
+    if (payload.restarting) {
+      setTimeout(() => window.location.reload(), 4000);
+    }
+  } catch (error) {
+    showNotice(error.message, true);
+    setBusy(btn, false);
+  }
+}
+
 function startAutoRefresh() {
   const seconds = Number(state.config.diagnostics.auto_refresh_seconds || 0);
-  if (seconds <= 0) return;
-  setInterval(() => {
-    Promise.allSettled([refreshStatus(), refreshMixer(), refreshNowPlaying()]);
-  }, seconds * 1000);
+  if (seconds > 0) {
+    setInterval(() => {
+      Promise.allSettled([refreshStatus(), refreshMixer(), refreshNowPlaying()]);
+    }, seconds * 1000);
+  }
+  // Always poll now-playing every 5s regardless of main auto-refresh setting
+  setInterval(() => refreshNowPlaying().catch(() => {}), 5000);
 }
 
 function escapeHtml(value) {
@@ -835,6 +854,7 @@ document.querySelector("#save-restart").addEventListener("click", async (event) 
   }
 });
 
+document.querySelector("#run-update").addEventListener("click", () => runUpdate());
 document.querySelector("#refresh-status").addEventListener("click", () => Promise.allSettled([refreshStatus(), refreshDoctor()]).catch((error) => showNotice(error.message, true)));
 document.querySelector("#run-doctor").addEventListener("click", () => refreshDoctor().catch((error) => showNotice(error.message, true)));
 document.querySelector("#refresh-doctor").addEventListener("click", () => refreshDoctor().catch((error) => showNotice(error.message, true)));

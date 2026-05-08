@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import glob
 import json
 import mimetypes
 import shlex
+import shutil
+import subprocess
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -151,7 +154,89 @@ class RequestHandler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
             return {"event": "unknown"}
+        if method == "POST" and path == "/api/update":
+            return self._run_update()
         raise ApiError(HTTPStatus.NOT_FOUND, "Not found")
+
+    def _run_update(self) -> dict[str, Any]:
+        # Find git repo
+        repo: Path | None = None
+        candidates = ["/opt/pi-connect-speaker", "/opt/spotpi"]
+        candidates += glob.glob("/home/*/pi-connect-speaker")
+        candidates += glob.glob("/home/*/spotpi")
+        for p in candidates:
+            if Path(p, ".git").is_dir():
+                repo = Path(p)
+                break
+        if repo is None:
+            raise ApiError(HTTPStatus.INTERNAL_SERVER_ERROR, "Git repository not found")
+
+        result = subprocess.run(
+            ["git", "-C", str(repo), "pull", "origin", "main"],
+            text=True, capture_output=True, timeout=60,
+        )
+        pull_output = (result.stdout + result.stderr).strip()
+        if result.returncode != 0:
+            raise ApiError(HTTPStatus.INTERNAL_SERVER_ERROR, pull_output or "git pull failed")
+
+        # Find installed package dir
+        pkg: Path | None = None
+        for name in ("pi_connect_speaker", "spotpi"):
+            for venv_root in ("/opt/pi-connect-speaker/venv", "/opt/spotpi/venv"):
+                matches = glob.glob(f"{venv_root}/lib/python*/site-packages/{name}")
+                if matches:
+                    pkg = Path(matches[0])
+                    break
+            if pkg:
+                break
+
+        copied: list[str] = []
+        if pkg:
+            src_dir: Path | None = None
+            for name in ("spotpi", "pi_connect_speaker"):
+                candidate = repo / "src" / name
+                if candidate.is_dir():
+                    src_dir = candidate
+                    break
+            if src_dir:
+                for pyfile in src_dir.glob("*.py"):
+                    try:
+                        shutil.copy2(pyfile, pkg / pyfile.name)
+                        copied.append(pyfile.name)
+                    except OSError:
+                        pass
+                static_src = src_dir / "static"
+                static_dst = pkg / "static"
+                if static_src.is_dir():
+                    for f in static_src.rglob("*"):
+                        if f.is_file():
+                            rel = f.relative_to(static_src)
+                            dst = static_dst / rel
+                            try:
+                                dst.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copy2(f, dst)
+                                copied.append(f"static/{rel}")
+                            except OSError:
+                                pass
+            event_src = repo / "scripts" / "spotpi-event"
+            if event_src.exists():
+                try:
+                    shutil.copy2(event_src, "/usr/local/bin/spotpi-event")
+                    Path("/usr/local/bin/spotpi-event").chmod(0o755)
+                    copied.append("spotpi-event")
+                except OSError:
+                    pass
+
+        # Restart services in background after response is sent
+        subprocess.Popen(
+            ["bash", "-c",
+             "sleep 2 && systemctl restart pi-connect-speaker.service"
+             " pi-connect-speaker-librespot.service 2>/dev/null"
+             " || sudo systemctl restart pi-connect-speaker.service"
+             " pi-connect-speaker-librespot.service 2>/dev/null"],
+            start_new_session=True,
+        )
+        return {"ok": True, "output": pull_output, "copied": copied, "restarting": True}
 
     def read_json(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"))
