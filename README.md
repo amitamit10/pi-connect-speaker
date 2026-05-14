@@ -17,15 +17,9 @@
 
 SpotPi bridges the gap between embedded hardware and modern web interfaces. A custom Python REST API manages the [librespot](https://github.com/librespot-org/librespot) Spotify client process, while a vanilla JavaScript SPA (~1,200 LOC) exposes full system control through the browser. The device shows up in the Spotify app as a native Connect speaker — no cloud relay, no third-party Python dependencies.
 
-```
-Spotify App  ──────────────────────────────────────────────────────────┐
-                                                                        │  Spotify Connect
-                                                                   ┌────▼────────────┐
-Browser  ──── HTTP/REST ──── Python API ──── systemd/ALSA ───────▶ │  librespot       │
-             :8080           (stdlib only)                          │  (Rust binary)   │
-                                    │                               └─────────────────┘
-                                    └── TOML config  ← backup/profile management
-```
+<p align="center">
+  <img src="docs/assets/architecture.png" alt="SpotPi Architecture" width="680">
+</p>
 
 ---
 
